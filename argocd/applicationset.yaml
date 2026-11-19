@@ -1,0 +1,46 @@
+# One Argo CD application per service: the shared Helm chart with that service's values file
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: pgmart-gitops
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  # ---------- The services ----------
+  generators:
+    - list:
+        elements:
+          - service: user-service
+          - service: catalog-service
+          - service: order-service
+  # ---------- The application created for each service ----------
+  template:
+    metadata:
+      name: "{{ .service }}"
+    spec:
+      project: pgmart-gitops
+      source:
+        repoURL: https://github.com/prafulgadbail/pgmart-gitops-config.git
+        targetRevision: main
+        path: helm/pgmart-service
+        helm:
+          releaseName: "{{ .service }}"
+          valueFiles:
+            - "../values/{{ .service }}.yaml"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: pgmart-gitops
+      # Every commit on main is deployed; manual changes in the cluster are undone
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 3m

@@ -1,0 +1,29 @@
+# Argo CD project for PGMart: limits what the applications may deploy, and where
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: pgmart-gitops
+  namespace: argocd
+spec:
+  description: PGMart services deployed from pgmart-gitops-config
+  # Only this repository can be deployed
+  sourceRepos:
+    - https://github.com/prafulgadbail/pgmart-gitops-config.git
+  # Only into the pgmart-gitops namespace of this cluster
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: pgmart-gitops
+  # Cluster-wide: only the namespace itself
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  # Inside the namespace: only what the chart creates
+  namespaceResourceWhitelist:
+    - { group: apps, kind: Deployment }
+    - { group: "", kind: Service }
+    - { group: "", kind: ServiceAccount }
+    - { group: "", kind: ConfigMap }
+    - { group: external-secrets.io, kind: ExternalSecret }
+    - { group: networking.k8s.io, kind: Ingress }
+    - { group: autoscaling, kind: HorizontalPodAutoscaler }
+    - { group: policy, kind: PodDisruptionBudget }
