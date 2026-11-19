@@ -1,0 +1,31 @@
+# order-service: checkout, Cash on Delivery and Razorpay payments, order status, notifications
+
+image:
+  repository: 938145531848.dkr.ecr.ap-south-1.amazonaws.com/pgmart-gitops/order-service
+  tag: set-by-ci
+
+# Plain settings (ConfigMap)
+env:
+  DB_SSLMODE: require
+  CATALOG_URL: http://catalog-service:8080
+  STORE_URL: https://pgmart-gitops.aws.prafulgadbail.online
+  SMTP_HOST: email-smtp.ap-south-1.amazonaws.com
+  SMTP_PORT: "587"
+  SMTP_AUTH: "true"
+  SMTP_STARTTLS: "true"
+  MAIL_FROM: PGMart <no-reply@aws.prafulgadbail.online>
+
+# Keys in the AWS Secrets Manager secret:
+#   database: DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
+#   app:      JWT_SECRET, INTERNAL_TOKEN
+#   mail:     SMTP_USERNAME, SMTP_PASSWORD
+#   payments: RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET
+secret:
+  remoteKey: pgmart-gitops/order-service
+
+ingress:
+  paths:
+    - /api/orders
+    - /api/notifications
+    - /api/payments
+    - /api/admin/orders

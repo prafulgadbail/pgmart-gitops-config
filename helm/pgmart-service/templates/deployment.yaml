@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    {{- include "pgmart-service.labels" . | nindent 4 }}
+  annotations:
+    # Reloader restarts the pods when External Secrets updates the Secret with a new value from AWS Secrets Manager
+    secret.reloader.stakater.com/reload: {{ .Release.Name }}
+spec:
+  # No replicas here: the HorizontalPodAutoscaler decides how many pods run
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1          # start one new pod first
+      maxUnavailable: 0    # then stop an old one: no drop in capacity during a release
+  selector:
+    matchLabels:
+      {{- include "pgmart-service.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "pgmart-service.labels" . | nindent 8 }}
+      annotations:
+        # Changes when the ConfigMap changes, so a new setting in Git replaces the pods
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ .Release.Name }}
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 40
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      # Spread the pods over the availability zones, so one zone going down leaves the others running
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "pgmart-service.selectorLabels" . | nindent 14 }}
+      containers:
+        - name: {{ .Release.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          ports:
+            - name: http
+              containerPort: {{ .Values.containerPort }}
+          # ---------- Settings: ConfigMap (plain) and Secret (from AWS Secrets Manager) ----------
+          envFrom:
+            {{- if .Values.env }}
+            - configMapRef:
+                name: {{ .Release.Name }}
+            {{- end }}
+            - secretRef:
+                name: {{ .Release.Name }}
+          # ---------- Health checks (Spring Boot Actuator) ----------
+          # startup: up to 3 minutes to start; liveness: restart if stuck; readiness: no traffic until ready
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 5
+            failureThreshold: 36
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 3
+          # Wait before stopping, so the load balancer stops sending requests first
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "10"]
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          # The root filesystem is read-only; /tmp is the only writable folder
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

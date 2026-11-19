@@ -1,0 +1,12 @@
+# At most one pod down at a time when Karpenter replaces or removes nodes
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    {{- include "pgmart-service.labels" . | nindent 4 }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "pgmart-service.selectorLabels" . | nindent 6 }}

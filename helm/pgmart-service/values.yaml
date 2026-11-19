@@ -1,0 +1,39 @@
+# Defaults for every service. Each service sets its own values in helm/values/<service>.yaml.
+
+# ---------- Image ----------
+image:
+  repository: ""   # set per service: <account>.dkr.ecr.ap-south-1.amazonaws.com/pgmart-gitops/<service>
+  tag: ""          # the Git commit, written by the CI pipeline
+
+containerPort: 8080
+
+# ---------- Settings ----------
+# Plain settings: become environment variables through a ConfigMap
+env: {}
+
+# Secret settings: one AWS Secrets Manager secret (a JSON object), copied into a
+# Kubernetes Secret by External Secrets; every key becomes an environment variable
+secret:
+  remoteKey: ""    # set per service, e.g. pgmart-gitops/user-service
+  storeName: aws-secrets-manager
+
+# ---------- Size and scaling ----------
+# Memory limit equals the request, so a pod never takes more memory than it reserved.
+# No CPU limit, so a busy pod is not throttled while the node has free CPU.
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    memory: 512Mi
+
+autoscaling:
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+
+# ---------- Traffic from outside the cluster ----------
+# All services share one internal ALB (one Ingress group); each service adds its own /api paths
+ingress:
+  groupName: pgmart-gitops
+  paths: []        # set per service, e.g. [/api/auth, /api/users]
