@@ -2,18 +2,15 @@
 
 image:
   repository: 938145531848.dkr.ecr.ap-south-1.amazonaws.com/pgmart-gitops/catalog-service
-  tag: set-by-ci
-
+  tag: f0f4c1bbde3e0cb03dddc7be73ff78a0dab12da1
 # Plain settings (ConfigMap)
 env:
   DB_SSLMODE: require
-
 # Keys in the AWS Secrets Manager secret:
 #   database: DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
 #   app:      JWT_SECRET, INTERNAL_TOKEN
 secret:
   remoteKey: pgmart-gitops/catalog-service
-
 ingress:
   paths:
     - /api/books
