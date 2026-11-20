@@ -2,8 +2,7 @@
 
 image:
   repository: 938145531848.dkr.ecr.ap-south-1.amazonaws.com/pgmart-gitops/user-service
-  tag: set-by-ci
-
+  tag: f0f4c1bbde3e0cb03dddc7be73ff78a0dab12da1
 # Plain settings (ConfigMap)
 env:
   DB_SSLMODE: require
@@ -14,14 +13,12 @@ env:
   SMTP_STARTTLS: "true"
   MAIL_FROM: PGMart <no-reply@aws.prafulgadbail.online>
   ADMIN_EMAIL: admin@aws.prafulgadbail.online
-
 # Keys in the AWS Secrets Manager secret:
 #   database: DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
 #   app:      JWT_SECRET, ADMIN_PASSWORD
 #   mail:     SMTP_USERNAME, SMTP_PASSWORD
 secret:
   remoteKey: pgmart-gitops/user-service
-
 ingress:
   paths:
     - /api/auth
